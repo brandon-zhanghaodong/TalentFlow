@@ -1,0 +1,5 @@
+{
+  "name": "人才盘点AI助手",
+  "description": "智能人才盘点与继任计划平台，具备交互式九宫格、拖拽校准以及 Gemini AI 驱动的员工发展洞察功能。",
+  "requestFramePermissions": []
+}

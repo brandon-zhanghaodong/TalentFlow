@@ -13,6 +13,16 @@ export enum PotentialLevel {
 
 export type SuccessionStatus = 'Ready-Now' | 'Ready-Future' | 'None';
 
+export type UserRole = 'HR_BP' | 'MANAGER';
+
+export interface User {
+  id: string;
+  name: string;
+  role: UserRole;
+  department?: string; // Optional for HR, required for Manager
+  avatar: string;
+}
+
 export interface Employee {
   id: string;
   name: string;
@@ -49,4 +59,22 @@ export interface DashboardStats {
   avgTenure: number;
 }
 
-export type View = 'grid' | 'list' | 'analytics' | 'settings' | 'succession';
+export interface ActionItem {
+  id: string;
+  category: 'HighPotential' | 'Underperformer' | 'Succession' | 'General';
+  action: string;
+  owner: string;
+  deadline: string;
+  status: 'Pending' | 'In Progress' | 'Done';
+}
+
+export type View = 'login' | 'home' | 'list' | 'grid' | 'succession' | 'plan' | 'analytics' | 'settings';
+
+// --- AUTH TYPES ---
+export interface TenantAuth {
+  adminPassword: string;
+  // Map Department Name -> Access Password
+  managerPasswords: Record<string, string>;
+}
+
+export type AuthStore = Record<string, TenantAuth>;

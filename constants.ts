@@ -1,5 +1,23 @@
 
-import { Employee, GridCellDef, PerformanceLevel, PotentialLevel } from './types';
+import { Employee, GridCellDef, PerformanceLevel, PotentialLevel, User } from './types';
+
+// --- Shared Constants ---
+
+export const MOCK_USERS: User[] = [
+  {
+    id: 'u1',
+    name: 'HR Administrator',
+    role: 'HR_BP',
+    avatar: 'https://ui-avatars.com/api/?name=HR+Admin&background=0D8ABC&color=fff',
+  },
+  {
+    id: 'u2',
+    name: 'Product Manager',
+    role: 'MANAGER',
+    department: '产品部',
+    avatar: 'https://ui-avatars.com/api/?name=Product+Mgr&background=random',
+  }
+];
 
 export const GRID_CELLS: GridCellDef[] = [
   // Top Row (High Potential)
@@ -18,7 +36,8 @@ export const GRID_CELLS: GridCellDef[] = [
   { id: 'trusted', title: '资深专家 (Trusted)', description: '低潜高绩。经验丰富的专业人士，适合作为导师。', color: 'text-teal-700', bg: 'bg-teal-50', potential: PotentialLevel.Low, performance: PerformanceLevel.High },
 ];
 
-export const INITIAL_EMPLOYEES: Employee[] = [
+// --- Tenant Data: Tech Corp (Original Data) ---
+const TECH_EMPLOYEES: Employee[] = [
   {
     id: '1',
     name: '陈莎莎',
@@ -173,3 +192,147 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     careerAspiration: '成为事务所最年轻的合伙人。'
   }
 ];
+
+// --- Tenant Data: Retail Group (New Data) ---
+const RETAIL_EMPLOYEES: Employee[] = [
+  {
+    id: 'r1',
+    name: '王强',
+    role: '华东区总经理',
+    department: '区域运营部',
+    avatar: 'https://ui-avatars.com/api/?name=Wang+Qiang&background=random',
+    performance: PerformanceLevel.High,
+    potential: PotentialLevel.High,
+    tenure: 8.5,
+    flightRisk: 'Low',
+    lastReviewDate: '2023-12-01',
+    keyStrengths: ['大客户管理', '成本控制', '团队激励'],
+    developmentNeeds: ['数字化思维'],
+    successionStatus: 'Ready-Now',
+    targetRole: '全国运营副总裁',
+    careerAspiration: '进入集团核心决策层。'
+  },
+  {
+    id: 'r2',
+    name: '苏菲',
+    role: '旗舰店店长',
+    department: '门店管理部',
+    avatar: 'https://ui-avatars.com/api/?name=Sophie&background=random',
+    performance: PerformanceLevel.High,
+    potential: PotentialLevel.Medium,
+    tenure: 4.0,
+    flightRisk: 'High',
+    lastReviewDate: '2024-01-10',
+    keyStrengths: ['客户服务', '库存管理', '员工培训'],
+    developmentNeeds: ['宏观战略'],
+    successionStatus: 'Ready-Future',
+    targetRole: '区域经理',
+    careerAspiration: '希望管理更大的区域，获得更多分红。'
+  },
+  {
+    id: 'r3',
+    name: '张敏',
+    role: '供应链专员',
+    department: '供应链中心',
+    avatar: 'https://ui-avatars.com/api/?name=Zhang+Min&background=random',
+    performance: PerformanceLevel.Medium,
+    potential: PotentialLevel.Low,
+    tenure: 1.5,
+    flightRisk: 'Medium',
+    lastReviewDate: '2024-02-15',
+    keyStrengths: ['流程执行', '数据录入'],
+    developmentNeeds: ['主动性', '沟通技巧'],
+    successionStatus: 'None',
+    targetRole: '',
+    careerAspiration: '稳定工作。'
+  },
+  {
+    id: 'r4',
+    name: '李雷',
+    role: '采购主管',
+    department: '供应链中心',
+    avatar: 'https://ui-avatars.com/api/?name=Li+Lei&background=random',
+    performance: PerformanceLevel.Low,
+    potential: PotentialLevel.Medium,
+    tenure: 2.0,
+    flightRisk: 'Low',
+    lastReviewDate: '2024-01-20',
+    keyStrengths: ['供应商关系'],
+    developmentNeeds: ['合规意识', '谈判能力'],
+    successionStatus: 'None',
+    targetRole: '',
+    careerAspiration: '提升专业技能。'
+  },
+  {
+    id: 'r5',
+    name: 'Emma Liu',
+    role: '首席营销官',
+    department: '市场部',
+    avatar: 'https://ui-avatars.com/api/?name=Emma+Liu&background=random',
+    performance: PerformanceLevel.High,
+    potential: PotentialLevel.High,
+    tenure: 1.0,
+    flightRisk: 'Medium',
+    lastReviewDate: '2023-11-01',
+    keyStrengths: ['品牌塑造', '数字营销', '创新'],
+    developmentNeeds: ['组织文化融合'],
+    successionStatus: 'None',
+    targetRole: '',
+    careerAspiration: '打造行业标杆案例。'
+  }
+];
+
+// Default Export for backward compatibility (points to Tech Corp)
+export const INITIAL_EMPLOYEES = TECH_EMPLOYEES;
+
+// --- Multi-Tenancy Configuration ---
+
+export const TENANT_META: Record<string, string> = {
+  'tech_corp': 'TechFlow Innovations (科技流)',
+  'retail_grp': 'NorthStar Retail Group (北极星零售)',
+};
+
+export const MOCK_TENANTS: Record<string, Employee[]> = {
+  'tech_corp': TECH_EMPLOYEES,
+  'retail_grp': RETAIL_EMPLOYEES,
+};
+
+// --- Seed Data Generator for New Tenants ---
+export const generateSeedEmployees = (tenantName: string): Employee[] => {
+  return [
+    {
+      id: `seed-${Date.now()}-1`,
+      name: '示例员工-高潜',
+      role: '高级经理',
+      department: '业务部',
+      avatar: 'https://ui-avatars.com/api/?name=High+Pot&background=random',
+      performance: PerformanceLevel.High,
+      potential: PotentialLevel.High,
+      tenure: 3,
+      flightRisk: 'Low',
+      lastReviewDate: new Date().toISOString().split('T')[0],
+      keyStrengths: ['执行力', '学习能力'],
+      developmentNeeds: ['战略思维'],
+      successionStatus: 'Ready-Future',
+      targetRole: '总监',
+      careerAspiration: '成为业务合伙人'
+    },
+    {
+      id: `seed-${Date.now()}-2`,
+      name: '示例员工-骨干',
+      role: '专员',
+      department: '运营部',
+      avatar: 'https://ui-avatars.com/api/?name=Core+Emp&background=random',
+      performance: PerformanceLevel.Medium,
+      potential: PotentialLevel.Medium,
+      tenure: 1.5,
+      flightRisk: 'Medium',
+      lastReviewDate: new Date().toISOString().split('T')[0],
+      keyStrengths: ['细心', '负责'],
+      developmentNeeds: ['效率提升'],
+      successionStatus: 'None',
+      targetRole: '',
+      careerAspiration: '稳定发展'
+    }
+  ];
+};

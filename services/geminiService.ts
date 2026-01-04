@@ -116,10 +116,13 @@ export const generateExecutiveReport = async (employees: Employee[], deptName: s
     const highPo = employees.filter(e => e.potential === PotentialLevel.High).map(e => e.name).join(', ');
     const highRisk = employees.filter(e => e.flightRisk === 'High').map(e => `${e.name}(${e.role})`).join(', ');
     const successors = employees.filter(e => e.successionStatus !== 'None').length;
+    
+    const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
 
     const prompt = `
-      请撰写一份正式的 **2025年度人才盘点总结报告**。
+      请撰写一份正式的 **年度人才盘点总结报告**。
       部门: ${deptName}
+      报告日期: ${today}
       
       数据概览:
       - 总人数: ${employees.length}
@@ -128,11 +131,13 @@ export const generateExecutiveReport = async (employees: Employee[], deptName: s
       - 已识别继任者数量: ${successors}
 
       报告结构 (Markdown):
-      # 2025年度人才盘点总结报告 - ${deptName}
+      # 年度人才盘点总结报告 - ${deptName}
+      **报告日期**: ${today}
+      
       ## 1. 执行摘要 (Executive Summary)
       ## 2. 人才结构与关键发现
       ## 3. 风险评估 (Risk Assessment)
-      ## 4. 2025人才行动计划 (Action Plan)
+      ## 4. 人才行动计划 (Action Plan)
       
       请基于数据进行专业解读，提出具体的管理建议。重点关注如何保留高潜人才以及如何应对流失风险。
     `;
@@ -147,4 +152,87 @@ export const generateExecutiveReport = async (employees: Employee[], deptName: s
         console.error(error);
         return "API Error";
     }
+}
+
+export const generateAnalyticsReport = async (stats: any): Promise<string> => {
+  const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const prompt = `
+    作为数据分析专家，请基于以下人才数据生成一份“组织效能分析报告”。
+    **重要**: 报告日期必须显示为 ${today}。
+    
+    数据概览:
+    - 继任健康度: ${stats.successionRate}% (覆盖 ${stats.successionCount}/${stats.successionTotal} 关键岗位)
+    - 高潜高离职风险人数: ${stats.riskCount} 人
+    - 平均司龄: ${stats.avgTenure} 年
+    - 司龄分布: ${JSON.stringify(stats.tenureDist)}
+    
+    请使用 Markdown 格式，包含以下部分：
+    1. **数据洞察**: 解读当前数据的含义。
+    2. **风险预警**: 针对离职风险和继任缺口提出警告。
+    3. **改进建议**: 针对司龄结构和梯队建设的具体建议。
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+    });
+    return response.text || "生成分析报告失败。";
+  } catch (error) {
+      console.error(error);
+      return "API Error";
+  }
+}
+
+export const chatWithTalentBot = async (query: string, employees: Employee[]): Promise<string> => {
+  // Serialize minimal employee data to save tokens
+  const employeeData = JSON.stringify(employees.map(e => ({
+    name: e.name,
+    role: e.role,
+    dept: e.department,
+    perf: e.performance, // 0=Low, 1=Med, 2=High
+    pot: e.potential,    // 0=Low, 1=Med, 2=High
+    risk: e.flightRisk,
+    succession: e.successionStatus
+  })));
+  
+  const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const systemInstruction = `
+    你是一个智能人才盘点助手 (Talent Bot)。你的任务是根据提供的员工数据上下文回答 HR 或管理者的自然语言提问。
+
+    **严格的数据隔离与隐私指令 (Critical Data Isolation Policy)**:
+    1. 你只能基于 **当前提供的 '数据上下文' (Data Context)** 进行回答。
+    2. '数据上下文' 包含了用户当前权限下可访问的所有员工数据。
+    3. 如果用户询问不在列表中的员工、部门或信息，你必须明确回答：“根据您当前的权限范围，我找不到该员工或部门的信息。”，切勿编造数据。
+    4. 不要泄露你作为 AI 模型关于外部世界的通用知识，只专注于分析这份数据。
+
+    当前日期: ${today}
+    数据上下文: ${employeeData}
+    
+    定义: 
+    - 绩效/潜力: 0=低, 1=中, 2=高
+    - 离职风险: Low/Medium/High
+    - 九宫格: 
+       - 高潜高绩 = 超级明星
+       - 高潜低绩 = 潜力之星
+       - 低潜低绩 = 待改进者
+
+    请简明扼要地回答用户的问题。如果涉及名单，请列出具体人名。
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: query,
+      config: {
+        systemInstruction: systemInstruction,
+      }
+    });
+    return response.text || "我还在思考中，请稍后再试。";
+  } catch (error) {
+    console.error("Chat Error:", error);
+    return "抱歉，我现在无法连接到人才数据库。";
+  }
 }

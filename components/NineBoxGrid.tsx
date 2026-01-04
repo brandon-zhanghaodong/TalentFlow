@@ -1,7 +1,9 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Employee, GridCellDef, PerformanceLevel, PotentialLevel } from '../types';
 import { GRID_CELLS } from '../constants';
 import { EmployeeCard } from './EmployeeCard';
+import { Info, X } from 'lucide-react';
 
 interface NineBoxGridProps {
   employees: Employee[];
@@ -10,6 +12,7 @@ interface NineBoxGridProps {
 }
 
 export const NineBoxGrid: React.FC<NineBoxGridProps> = ({ employees, onMoveEmployee, onSelectEmployee }) => {
+  const [showGuide, setShowGuide] = useState(true);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault(); // Necessary to allow dropping
@@ -25,13 +28,33 @@ export const NineBoxGrid: React.FC<NineBoxGridProps> = ({ employees, onMoveEmplo
   };
 
   // Sort cells to render in a 3x3 visual grid (High Pot top, Low Pot bottom)
-  // Rows: High Pot (2), Med Pot (1), Low Pot (0)
-  // Cols: Low Perf (0), Med Perf (1), High Perf (2)
   const rows = [PotentialLevel.High, PotentialLevel.Medium, PotentialLevel.Low];
   const cols = [PerformanceLevel.Low, PerformanceLevel.Medium, PerformanceLevel.High];
 
   return (
     <div className="flex-1 p-6 overflow-auto" id="nine-box-grid-container">
+      
+      {/* User Guide Banner */}
+      {showGuide && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start justify-between animate-in slide-in-from-top-2">
+          <div className="flex gap-3">
+             <div className="p-1 bg-blue-100 rounded text-blue-600 mt-0.5">
+               <Info size={18} />
+             </div>
+             <div>
+               <h4 className="text-sm font-bold text-blue-800 mb-1">如何使用九宫格校准？</h4>
+               <ul className="text-sm text-blue-700 list-disc list-inside space-y-0.5">
+                 <li><strong>拖拽操作</strong>：按住员工卡片，将其拖动到符合其绩效与潜力的格子中。</li>
+                 <li><strong>查看详情</strong>：点击任意员工卡片，唤出右侧详情页，使用 AI 生成诊断与发展建议。</li>
+               </ul>
+             </div>
+          </div>
+          <button onClick={() => setShowGuide(false)} className="text-blue-400 hover:text-blue-600">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-[auto_1fr] gap-4 h-full min-h-[800px]">
         {/* Y-Axis Label */}
         <div className="flex items-center justify-center">

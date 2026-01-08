@@ -136,6 +136,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, e
       }
   }
 
+  // Get configured departments for this tenant
+  const availableDepts = verifiedTenant && authStore[verifiedTenant]?.managerPasswords 
+      ? Object.keys(authStore[verifiedTenant].managerPasswords).sort()
+      : [];
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       {/* Navbar */}
@@ -421,8 +426,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onRegister, e
                                         required
                                     >
                                         <option value="">请选择部门...</option>
-                                        <option value="业务部">业务部 (示例)</option>
-                                        <option value="运营部">运营部 (示例)</option>
+                                        {availableDepts.length > 0 ? (
+                                            availableDepts.map(dept => (
+                                                <option key={dept} value={dept}>{dept}</option>
+                                            ))
+                                        ) : (
+                                            <option value="" disabled>暂无配置的部门账号 (请联系HR)</option>
+                                        )}
                                     </select>
                                     <Building2 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                                 </div>

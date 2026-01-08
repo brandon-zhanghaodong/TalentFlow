@@ -174,6 +174,35 @@ function App() {
     }));
   };
 
+  const handleAddManager = (deptName: string, password: string) => {
+    if (!currentTenantId) return;
+    setAuthStore(prev => ({
+      ...prev,
+      [currentTenantId]: {
+        ...prev[currentTenantId],
+        managerPasswords: {
+          ...prev[currentTenantId].managerPasswords,
+          [deptName]: password
+        }
+      }
+    }));
+  }
+
+  const handleRemoveManager = (deptName: string) => {
+    if (!currentTenantId) return;
+    setAuthStore(prev => {
+      const newPasswords = { ...prev[currentTenantId].managerPasswords };
+      delete newPasswords[deptName];
+      return {
+        ...prev,
+        [currentTenantId]: {
+          ...prev[currentTenantId],
+          managerPasswords: newPasswords
+        }
+      };
+    });
+  }
+
   const confirmLogout = () => {
     setCurrentUser(null);
     setCurrentTenantId('');
@@ -261,6 +290,8 @@ function App() {
                 departments={departments}
                 tenantAuth={authStore[currentTenantId]}
                 onUpdatePassword={handleUpdatePassword}
+                onAddManager={handleAddManager}
+                onRemoveManager={handleRemoveManager}
              />
           )}
           

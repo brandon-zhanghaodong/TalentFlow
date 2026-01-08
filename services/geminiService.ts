@@ -185,7 +185,7 @@ export const generateAnalyticsReport = async (stats: any): Promise<string> => {
   }
 }
 
-export const chatWithTalentBot = async (query: string, employees: Employee[]): Promise<string> => {
+export const chatWithTalentBot = async (query: string, employees: Employee[], contextName: string): Promise<string> => {
   // Serialize minimal employee data to save tokens
   const employeeData = JSON.stringify(employees.map(e => ({
     name: e.name,
@@ -199,27 +199,24 @@ export const chatWithTalentBot = async (query: string, employees: Employee[]): P
   
   const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
 
+  // Enhanced System Instruction to prevent "I can't find data" errors
   const systemInstruction = `
-    你是一个智能人才盘点助手 (Talent Bot)。你的任务是根据提供的员工数据上下文回答 HR 或管理者的自然语言提问。
-
-    **严格的数据隔离与隐私指令 (Critical Data Isolation Policy)**:
-    1. 你只能基于 **当前提供的 '数据上下文' (Data Context)** 进行回答。
-    2. '数据上下文' 包含了用户当前权限下可访问的所有员工数据。
-    3. 如果用户询问不在列表中的员工、部门或信息，你必须明确回答：“根据您当前的权限范围，我找不到该员工或部门的信息。”，切勿编造数据。
-    4. 不要泄露你作为 AI 模型关于外部世界的通用知识，只专注于分析这份数据。
-
-    当前日期: ${today}
-    数据上下文: ${employeeData}
+    你是一个智能人才盘点助手 (Talent Bot)。你的核心任务是根据提供的 JSON 数据回答 HR 或管理者的提问。
     
-    定义: 
-    - 绩效/潜力: 0=低, 1=中, 2=高
-    - 离职风险: Low/Medium/High
-    - 九宫格: 
-       - 高潜高绩 = 超级明星
-       - 高潜低绩 = 潜力之星
-       - 低潜低绩 = 待改进者
+    **上下文定义**:
+    - 当前查看的组织/部门名称: "${contextName}"
+    - 当前日期: ${today}
+    - 数据上下文 (JSON): ${employeeData}
 
-    请简明扼要地回答用户的问题。如果涉及名单，请列出具体人名。
+    **核心指令**:
+    1. **你拥有完全的数据访问权限**: 上述 JSON 数据就是 "${contextName}" 的**全部**真实员工数据。如果用户问“团队情况”或“部门情况”，指的就是这份数据。
+    2. **不要拒绝回答**: 只要问题可以通过分析 JSON 数据得出结论（如统计人数、查找高潜、分析分布），你必须回答。不要说“根据权限我无法找到”，因为数据就在上面。
+    3. **数据解释**:
+       - 绩效/潜力: 0=低, 1=中, 2=高
+       - 离职风险: Low/Medium/High
+       - 九宫格定义: 高潜高绩=超级明星, 高潜低绩=潜力之星, 低潜低绩=待改进者。
+    4. **回答风格**: 简洁、专业、直接。如果涉及具体员工，请列出姓名。
+    5. **隐私**: 不要回答与此 JSON 数据无关的外部世界通用人事隐私，只基于此数据分析。
   `;
 
   try {
@@ -236,3 +233,40 @@ export const chatWithTalentBot = async (query: string, employees: Employee[]): P
     return "抱歉，我现在无法连接到人才数据库。";
   }
 }
+
+// New function to parse org charts or employee lists
+export const parseOrgStructure = async (base64Data: string, mimeType: string): Promise<{ department: string }[]> => {
+  try {
+    const prompt = `
+      Analyze the provided file (image or document). 
+      Identify all Organizational Departments (e.g., "Sales Dept", "IT", "Marketing", "财务部", "人力资源部").
+      
+      Return ONLY a raw JSON array of objects. Do not include markdown formatting (like \`\`\`json).
+      Format: [{"department": "Name"}]
+      
+      If you see a hierarchy, extract the distinct department names.
+      If you see a list of people with departments, extract the unique department names.
+    `;
+    
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash', // Flash is great for multimodal ingestion
+      contents: [
+        {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64Data
+          }
+        },
+        { text: prompt }
+      ]
+    });
+
+    const text = response.text || "[]";
+    // Clean potential markdown code blocks
+    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    return JSON.parse(cleanedText);
+  } catch (error) {
+    console.error("Org Parse Error:", error);
+    return [];
+  }
+};

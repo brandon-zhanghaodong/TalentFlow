@@ -1,19 +1,80 @@
 
-import React, { useState, useRef } from 'react';
-import { ActionItem } from '../types';
-import { Plus, Trash2, FileDown, FileText, ClipboardList } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ActionItem, User } from '../types';
+import { Plus, Trash2, FileDown, FileText, ClipboardList, Lock } from 'lucide-react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-export const ActionPlanView: React.FC = () => {
-  const [department, setDepartment] = useState('产品研发中心');
-  const [items, setItems] = useState<ActionItem[]>([
-    { id: '1', category: 'HighPotential', action: '启动“未来领袖”加速营', owner: 'HRBP-Lisa', deadline: '2025-Q2', status: 'In Progress' },
-    { id: '2', category: 'Succession', action: '为产品总监岗位指定2名继任者并开始轮岗', owner: '张总', deadline: '2025-06-30', status: 'Pending' },
-    { id: '3', category: 'Underperformer', action: '执行PIP计划 (针对绩效评级1人员)', owner: '各组TeamLead', deadline: '2025-03-31', status: 'Pending' },
-  ]);
+interface ActionPlanViewProps {
+  currentUser: User;
+  selectedDept: string;
+}
+
+export const ActionPlanView: React.FC<ActionPlanViewProps> = ({ currentUser, selectedDept }) => {
+  const isManager = currentUser.role === 'MANAGER';
+  
+  const getContextTitle = () => {
+     if (isManager) return currentUser.department || '我的部门';
+     return selectedDept === 'All' ? '全公司' : selectedDept;
+  };
+
+  const [department, setDepartment] = useState(getContextTitle());
+  
+  // Mock data generator based on department context with specific templates
+  const getInitialItems = (deptName: string): ActionItem[] => {
+    const isSales = deptName.includes('销售') || deptName.includes('Sales') || deptName.includes('业务') || deptName.includes('Retail');
+    const isTech = deptName.includes('研发') || deptName.includes('技术') || deptName.includes('产品') || deptName.includes('R&D');
+    const isHR = deptName.includes('HR') || deptName.includes('人力') || deptName.includes('人事');
+    const isLegal = deptName.includes('法务') || deptName.includes('Legal');
+
+    if (isSales) {
+        return [
+            { id: '1', category: 'HighPotential', action: `启动“${deptName}销冠俱乐部”领导力培养`, owner: '销售总监', deadline: '2025-06-30', status: 'In Progress' },
+            { id: '2', category: 'Underperformer', action: '执行末位淘汰与业绩改进计划 (PIP)', owner: '区域经理', deadline: '2025-03-31', status: 'Pending' },
+            { id: '3', category: 'Succession', action: '储备大区经理继任人选并轮岗', owner: 'HRBP', deadline: '2025-09-30', status: 'Pending' },
+        ];
+    }
+    
+    if (isTech) {
+        return [
+             { id: '1', category: 'HighPotential', action: `设立首席架构师/技术专家轮岗机制`, owner: 'CTO', deadline: '2025-08-30', status: 'In Progress' },
+             { id: '2', category: 'Succession', action: '关键技术栈(AI/Cloud)专家备份计划', owner: '技术VP', deadline: '2025-05-30', status: 'Pending' },
+             { id: '3', category: 'General', action: '技术职级晋升评审 (T6-T8)', owner: '技术委员会', deadline: '2025-04-15', status: 'In Progress' },
+        ];
+    }
+
+    if (isHR) {
+        return [
+             { id: '1', category: 'General', action: `2025全员人才盘点校准会组织`, owner: 'OD负责人', deadline: '2025-02-28', status: 'In Progress' },
+             { id: '2', category: 'HighPotential', action: '集团高潜人才库(HiPo)更新', owner: 'HRBP Head', deadline: '2025-03-15', status: 'Pending' },
+             { id: '3', category: 'Succession', action: '核心高管继任计划回顾与汇报', owner: 'CHO', deadline: '2025-06-30', status: 'Pending' },
+        ];
+    }
+
+    if (isLegal) {
+        return [
+             { id: '1', category: 'Succession', action: '总法务顾问继任者培养', owner: 'General Counsel', deadline: '2025-12-31', status: 'In Progress' },
+             { id: '2', category: 'General', action: '合规团队能力提升培训', owner: '合规总监', deadline: '2025-05-20', status: 'Pending' },
+        ];
+    }
+
+    return [
+      { id: '1', category: 'HighPotential', action: `启动“${deptName}未来领袖”加速营`, owner: '部门负责人', deadline: '2025-Q2', status: 'In Progress' },
+      { id: '2', category: 'Succession', action: '为关键岗位指定2名继任者并开始轮岗', owner: '部门负责人', deadline: '2025-06-30', status: 'Pending' },
+      { id: '3', category: 'Underperformer', action: '执行PIP计划 (针对绩效评级1人员)', owner: 'Team Lead', deadline: '2025-03-31', status: 'Pending' },
+    ];
+  };
+
+  const [items, setItems] = useState<ActionItem[]>(getInitialItems(getContextTitle()));
 
   const reportRef = useRef<HTMLDivElement>(null);
+
+  // Sync state if context changes (e.g. switching department filter in top bar)
+  useEffect(() => {
+    const newTitle = getContextTitle();
+    setDepartment(newTitle);
+    setItems(getInitialItems(newTitle === '全公司' ? '集团' : newTitle));
+  }, [currentUser, selectedDept]);
 
   const addItem = () => {
     const newItem: ActionItem = {
@@ -21,7 +82,7 @@ export const ActionPlanView: React.FC = () => {
       category: 'General',
       action: '新行动项...',
       owner: '待定',
-      deadline: 'YYYY-MM-DD',
+      deadline: '2025-12-31',
       status: 'Pending'
     };
     setItems([...items, newItem]);
@@ -117,13 +178,20 @@ export const ActionPlanView: React.FC = () => {
 
        {/* Editable Container */}
        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 min-h-[600px]" ref={reportRef}>
-          <div className="mb-8 pb-6 border-b border-slate-100">
+          <div className="mb-8 pb-6 border-b border-slate-100 relative">
              <input 
                value={department}
                onChange={(e) => setDepartment(e.target.value)}
-               className="text-3xl font-bold text-slate-900 w-full border-none focus:ring-0 focus:border-b focus:border-blue-500 px-0"
+               readOnly={isManager} // Managers cannot change the department name here
+               className={`text-3xl font-bold text-slate-900 w-full border-none focus:ring-0 px-0 ${isManager ? 'cursor-default focus:border-none' : 'focus:border-b focus:border-blue-500'}`}
                placeholder="输入部门名称..."
              />
+             {isManager && (
+                <div className="absolute right-0 top-2 flex items-center gap-1 text-slate-400 text-xs bg-slate-100 px-2 py-1 rounded">
+                   <Lock size={12} />
+                   <span>已锁定 (管理者视图)</span>
+                </div>
+             )}
              <div className="text-slate-400 mt-2">2025年度人才盘点后续落地计划</div>
           </div>
 

@@ -1,8 +1,33 @@
-
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { Employee, PerformanceLevel, PotentialLevel } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// Helper for exponential backoff retry on 503 errors
+const callGeminiWithRetry = async <T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delay = 2000
+): Promise<T> => {
+  try {
+    return await fn();
+  } catch (error: any) {
+    // Check for 503 or overload messages in various error formats
+    const isOverloaded = error.status === 503 || 
+                         (error.message && (
+                           error.message.includes('503') || 
+                           error.message.includes('overloaded') ||
+                           error.message.includes('UNAVAILABLE')
+                         ));
+    
+    if (retries > 0 && isOverloaded) {
+      console.warn(`Gemini API overloaded. Retrying in ${delay}ms... (${retries} retries left)`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return callGeminiWithRetry(fn, retries - 1, delay * 2);
+    }
+    throw error;
+  }
+};
 
 export const generateTalentAnalysis = async (employee: Employee): Promise<string> => {
   const perfMap = {
@@ -41,14 +66,14 @@ export const generateTalentAnalysis = async (employee: Employee): Promise<string
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
-    });
+    }));
     return response.text || "暂时无法生成分析报告。";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "连接 AI 服务出错，请检查您的 API Key。";
+    return "AI 服务当前繁忙，请稍后再试。";
   }
 };
 
@@ -67,14 +92,14 @@ export const generateSuccessionPlan = async (employee: Employee): Promise<string
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
-    });
+    }));
     return response.text || "暂时无法生成继任计划。";
   } catch (error) {
     console.error("Gemini API Succession Error:", error);
-    return "生成继任计划时出错。";
+    return "AI 服务繁忙，生成继任计划失败。";
   }
 };
 
@@ -101,14 +126,14 @@ export const generateTeamInsights = async (employees: Employee[]): Promise<strin
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-    });
+    }));
     return response.text || "暂时无法生成团队分析。";
   } catch (error) {
       console.error(error);
-      return "生成团队分析时出错。";
+      return "AI 服务繁忙，请稍后重试。";
   }
 }
 
@@ -143,14 +168,14 @@ export const generateExecutiveReport = async (employees: Employee[], deptName: s
     `;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
             model: 'gemini-2.5-flash',
             contents: prompt,
-        });
+        }));
         return response.text || "生成报告失败。";
     } catch (error) {
         console.error(error);
-        return "API Error";
+        return "AI 服务繁忙，请稍后重试。";
     }
 }
 
@@ -174,18 +199,18 @@ export const generateAnalyticsReport = async (stats: any): Promise<string> => {
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-    });
+    }));
     return response.text || "生成分析报告失败。";
   } catch (error) {
       console.error(error);
-      return "API Error";
+      return "AI 服务繁忙，请稍后重试。";
   }
 }
 
-export const chatWithTalentBot = async (query: string, employees: Employee[], contextName: string): Promise<string> => {
+export const chatWithTalentBot = async (query: string, employees: Employee[], contextName: string, userRole: string): Promise<string> => {
   // Serialize minimal employee data to save tokens
   const employeeData = JSON.stringify(employees.map(e => ({
     name: e.name,
@@ -197,40 +222,51 @@ export const chatWithTalentBot = async (query: string, employees: Employee[], co
     succession: e.successionStatus
   })));
   
-  const today = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  const isManager = userRole === 'MANAGER';
 
-  // Enhanced System Instruction to prevent "I can't find data" errors
+  // Enhanced System Instruction enforcing Manager Constraints
   const systemInstruction = `
     你是一个智能人才盘点助手 (Talent Bot)。你的核心任务是根据提供的 JSON 数据回答 HR 或管理者的提问。
     
-    **上下文定义**:
-    - 当前查看的组织/部门名称: "${contextName}"
-    - 当前日期: ${today}
-    - 数据上下文 (JSON): ${employeeData}
-
-    **核心指令**:
-    1. **你拥有完全的数据访问权限**: 上述 JSON 数据就是 "${contextName}" 的**全部**真实员工数据。如果用户问“团队情况”或“部门情况”，指的就是这份数据。
-    2. **不要拒绝回答**: 只要问题可以通过分析 JSON 数据得出结论（如统计人数、查找高潜、分析分布），你必须回答。不要说“根据权限我无法找到”，因为数据就在上面。
-    3. **数据解释**:
+    **上下文与安全权限**:
+    - 当前数据范围 (Scope): "${contextName}"
+    - 当前用户角色: ${isManager ? "部门管理者 (Manager)" : "HR 管理员 (HR Admin)"}
+    
+    **重要规则 (Security Rules)**:
+    1. **Manager 严格限制**: 
+       ${isManager ? 
+         `如果用户询问“全公司”、“其他部门”的数据、平均值或任何超出 "${contextName}" 范围的问题，你必须**拒绝回答**。请礼貌地回复：“抱歉，作为部门管理者，您的权限仅限于查看 ${contextName} 的数据，无法访问公司级或其他部门信息。”` : 
+         `如果用户是 HR，但当前数据仅包含 ${contextName}，若用户询问全公司数据，请说明数据缺失，但不必拒绝一般性问题。`
+       }
+    2. **数据一致性**: 你的回答必须完全基于下方提供的 JSON 数据。不要编造外部数据。
+    3. **专业性**: 使用 HR 专业术语（如九宫格、继任计划、离职风险）。
+    4. **回答风格**: 简洁、客观、建设性。
+    5. **数据解释**:
        - 绩效/潜力: 0=低, 1=中, 2=高
        - 离职风险: Low/Medium/High
-       - 九宫格定义: 高潜高绩=超级明星, 高潜低绩=潜力之星, 低潜低绩=待改进者。
-    4. **回答风格**: 简洁、专业、直接。如果涉及具体员工，请列出姓名。
-    5. **隐私**: 不要回答与此 JSON 数据无关的外部世界通用人事隐私，只基于此数据分析。
+  `;
+
+  // Provide data in the prompt
+  const fullPrompt = `
+    Current Employee Data (${contextName}):
+    ${employeeData}
+
+    User Question:
+    ${query}
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: query,
+      contents: fullPrompt,
       config: {
         systemInstruction: systemInstruction,
       }
-    });
+    }));
     return response.text || "我还在思考中，请稍后再试。";
   } catch (error) {
     console.error("Chat Error:", error);
-    return "抱歉，我现在无法连接到人才数据库。";
+    return "抱歉，AI 服务正忙 (503 Overloaded)，请稍后再试。";
   }
 }
 
@@ -248,8 +284,8 @@ export const parseOrgStructure = async (base64Data: string, mimeType: string): P
       If you see a list of people with departments, extract the unique department names.
     `;
     
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', // Flash is great for multimodal ingestion
+    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
+      model: 'gemini-2.5-flash', 
       contents: [
         {
           inlineData: {
@@ -259,7 +295,7 @@ export const parseOrgStructure = async (base64Data: string, mimeType: string): P
         },
         { text: prompt }
       ]
-    });
+    }));
 
     const text = response.text || "[]";
     // Clean potential markdown code blocks

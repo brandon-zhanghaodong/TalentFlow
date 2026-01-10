@@ -260,6 +260,7 @@ function App() {
               title={title}
               onTitleChange={setTitle}
               onNavigate={setCurrentView}
+              currentUser={currentUser}
             />
           )}
           {currentView === 'grid' && (
@@ -282,7 +283,10 @@ function App() {
              />
           )}
           {currentView === 'plan' && (
-             <ActionPlanView />
+             <ActionPlanView 
+               currentUser={currentUser} 
+               selectedDept={currentUser.role === 'MANAGER' ? (currentUser.department || 'All') : selectedDept}
+             />
           )}
           {currentView === 'settings' && (
              <SettingsView 

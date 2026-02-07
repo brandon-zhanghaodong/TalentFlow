@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import { Employee, PotentialLevel, PerformanceLevel, User } from '../types';
 import { BarChart3, AlertCircle, Crown, BrainCircuit, FileUp, Download, Image as ImageIcon, Filter, Edit2, FileText, HelpCircle, X, File, FileDown, Lock } from 'lucide-react';
-import { generateTeamInsights, generateExecutiveReport } from '../services/geminiService';
+import { generateTeamInsights, generateExecutiveReport } from '../services/deepseekService';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import ReactMarkdown from 'react-markdown';

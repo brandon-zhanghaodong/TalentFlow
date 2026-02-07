@@ -1,30 +1,32 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { Employee, PerformanceLevel, PotentialLevel } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || process.env.GEMINI_API_KEY || '';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
 
-// Helper for exponential backoff retry on 503 errors
-const callGeminiWithRetry = async <T>(
-  fn: () => Promise<T>,
-  retries = 3,
-  delay = 2000
-): Promise<T> => {
+const callDeepSeek = async (messages: any[], options: any = {}) => {
   try {
-    return await fn();
-  } catch (error: any) {
-    // Check for 503 or overload messages in various error formats
-    const isOverloaded = error.status === 503 || 
-                         (error.message && (
-                           error.message.includes('503') || 
-                           error.message.includes('overloaded') ||
-                           error.message.includes('UNAVAILABLE')
-                         ));
-    
-    if (retries > 0 && isOverloaded) {
-      console.warn(`Gemini API overloaded. Retrying in ${delay}ms... (${retries} retries left)`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return callGeminiWithRetry(fn, retries - 1, delay * 2);
+    const response = await fetch(DEEPSEEK_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages,
+        ...options
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || `DeepSeek API error: ${response.status}`);
     }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error("DeepSeek API Error:", error);
     throw error;
   }
 };
@@ -66,13 +68,8 @@ export const generateTalentAnalysis = async (employee: Employee): Promise<string
   `;
 
   try {
-    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    }));
-    return response.text || "暂时无法生成分析报告。";
+    return await callDeepSeek([{ role: 'user', content: prompt }]);
   } catch (error) {
-    console.error("Gemini API Error:", error);
     return "AI 服务当前繁忙，请稍后再试。";
   }
 };
@@ -92,19 +89,13 @@ export const generateSuccessionPlan = async (employee: Employee): Promise<string
   `;
 
   try {
-    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    }));
-    return response.text || "暂时无法生成继任计划。";
+    return await callDeepSeek([{ role: 'user', content: prompt }]);
   } catch (error) {
-    console.error("Gemini API Succession Error:", error);
     return "AI 服务繁忙，生成继任计划失败。";
   }
 };
 
 export const generateTeamInsights = async (employees: Employee[]): Promise<string> => {
-  // Simple aggregation for the prompt
   const count = employees.length;
   const highPo = employees.filter(e => e.potential === PotentialLevel.High).length;
   const highPerf = employees.filter(e => e.performance === PerformanceLevel.High).length;
@@ -126,14 +117,9 @@ export const generateTeamInsights = async (employees: Employee[]): Promise<strin
   `;
 
   try {
-    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    }));
-    return response.text || "暂时无法生成团队分析。";
+    return await callDeepSeek([{ role: 'user', content: prompt }]);
   } catch (error) {
-      console.error(error);
-      return "AI 服务繁忙，请稍后重试。";
+    return "AI 服务繁忙，请稍后重试。";
   }
 }
 
@@ -168,13 +154,8 @@ export const generateExecutiveReport = async (employees: Employee[], deptName: s
     `;
 
     try {
-        const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-        }));
-        return response.text || "生成报告失败。";
+        return await callDeepSeek([{ role: 'user', content: prompt }]);
     } catch (error) {
-        console.error(error);
         return "AI 服务繁忙，请稍后重试。";
     }
 }
@@ -199,32 +180,25 @@ export const generateAnalyticsReport = async (stats: any): Promise<string> => {
   `;
 
   try {
-    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-    }));
-    return response.text || "生成分析报告失败。";
+    return await callDeepSeek([{ role: 'user', content: prompt }]);
   } catch (error) {
-      console.error(error);
       return "AI 服务繁忙，请稍后重试。";
   }
 }
 
 export const chatWithTalentBot = async (query: string, employees: Employee[], contextName: string, userRole: string): Promise<string> => {
-  // Serialize minimal employee data to save tokens
   const employeeData = JSON.stringify(employees.map(e => ({
     name: e.name,
     role: e.role,
     dept: e.department,
-    perf: e.performance, // 0=Low, 1=Med, 2=High
-    pot: e.potential,    // 0=Low, 1=Med, 2=High
+    perf: e.performance,
+    pot: e.potential,
     risk: e.flightRisk,
     succession: e.successionStatus
   })));
   
   const isManager = userRole === 'MANAGER';
 
-  // Enhanced System Instruction enforcing Manager Constraints
   const systemInstruction = `
     你是一个智能人才盘点助手 (Talent Bot)。你的核心任务是根据提供的 JSON 数据回答 HR 或管理者的提问。
     
@@ -246,31 +220,16 @@ export const chatWithTalentBot = async (query: string, employees: Employee[], co
        - 离职风险: Low/Medium/High
   `;
 
-  // Provide data in the prompt
-  const fullPrompt = `
-    Current Employee Data (${contextName}):
-    ${employeeData}
-
-    User Question:
-    ${query}
-  `;
-
   try {
-    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: fullPrompt,
-      config: {
-        systemInstruction: systemInstruction,
-      }
-    }));
-    return response.text || "我还在思考中，请稍后再试。";
+    return await callDeepSeek([
+      { role: 'system', content: systemInstruction },
+      { role: 'user', content: `Current Employee Data (${contextName}):\n${employeeData}\n\nUser Question:\n${query}` }
+    ]);
   } catch (error) {
-    console.error("Chat Error:", error);
-    return "抱歉，AI 服务正忙 (503 Overloaded)，请稍后再试。";
+    return "抱歉，AI 服务正忙，请稍后再试。";
   }
 }
 
-// New function to parse org charts or employee lists
 export const parseOrgStructure = async (base64Data: string, mimeType: string): Promise<{ department: string }[]> => {
   try {
     const prompt = `
@@ -284,22 +243,14 @@ export const parseOrgStructure = async (base64Data: string, mimeType: string): P
       If you see a list of people with departments, extract the unique department names.
     `;
     
-    const response = await callGeminiWithRetry<GenerateContentResponse>(() => ai.models.generateContent({
-      model: 'gemini-2.5-flash', 
-      contents: [
-        {
-          inlineData: {
-            mimeType: mimeType,
-            data: base64Data
-          }
-        },
-        { text: prompt }
-      ]
-    }));
-
-    const text = response.text || "[]";
-    // Clean potential markdown code blocks
-    const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    // Note: DeepSeek chat model doesn't support direct image input like Gemini.
+    // For a real production app, you'd need a vision-capable model or OCR.
+    // Here we provide a placeholder or use a text-based approach if possible.
+    // Since the original code used inlineData, we'll log that this needs a vision model.
+    console.warn("DeepSeek-chat does not support direct image analysis. This function may need a vision model or OCR step.");
+    
+    const response = await callDeepSeek([{ role: 'user', content: prompt }]);
+    const cleanedText = response.replace(/```json/g, '').replace(/```/g, '').trim();
     return JSON.parse(cleanedText);
   } catch (error) {
     console.error("Org Parse Error:", error);

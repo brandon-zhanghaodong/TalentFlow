@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Employee, PerformanceLevel, PotentialLevel } from '../types';
 import { X, Sparkles, TrendingUp, CheckCircle, BrainCircuit, UserPlus, FileText, Target, Flag } from 'lucide-react';
-import { generateTalentAnalysis, generateSuccessionPlan } from '../services/geminiService';
+import { generateTalentAnalysis, generateSuccessionPlan } from '../services/deepseekService';
 
 interface TalentDrawerProps {
   employee: Employee | null;
@@ -148,7 +148,7 @@ export const TalentDrawer: React.FC<TalentDrawerProps> = ({ employee, onClose })
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <BrainCircuit size={16} className="text-purple-600" /> 
-                  Gemini 智能诊断
+                  DeepSeek 智能诊断
                 </h3>
                 {!analysis && (
                     <button 

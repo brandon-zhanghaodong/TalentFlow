@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Employee, View, PerformanceLevel, PotentialLevel, User } from '../types';
 import { Send, Bot, LayoutGrid, FileText, PieChart, Sparkles, Edit2, MessageSquare, Info, ShieldAlert, Lock, Network, Zap, ChevronRight, Activity, Users, RefreshCcw, Command, Lightbulb } from 'lucide-react';
-import { chatWithTalentBot } from '../services/geminiService';
+import { chatWithTalentBot } from '../services/deepseekService';
 import ReactMarkdown from 'react-markdown';
 
 interface HomeChatProps {

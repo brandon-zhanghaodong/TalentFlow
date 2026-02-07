@@ -4,7 +4,7 @@ import { Employee, PerformanceLevel, PotentialLevel } from '../types';
 import { Layers, AlertTriangle, Users, TrendingUp, Briefcase, Clock, FileDown, FileText, BrainCircuit, X, File } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { generateAnalyticsReport } from '../services/geminiService';
+import { generateAnalyticsReport } from '../services/deepseekService';
 import ReactMarkdown from 'react-markdown';
 
 export const AnalyticsView: React.FC<{ employees: Employee[] }> = ({ employees }) => {

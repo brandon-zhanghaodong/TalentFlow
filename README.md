@@ -22,7 +22,7 @@ TalentFlow是一个现代化的企业级人才管理平台，集成了**AI智能
 
 ### 为什么选择TalentFlow？
 
-- 🤖 **AI驱动** - Gemini AI提供智能对话和人才分析
+- 🤖 **AI驱动** - DeepSeek AI提供智能对话和人才分析
 - 📊 **数据可视化** - 九宫格、绩效分布、离职风险一目了然
 - 🔐 **企业级安全** - Row-Level Security、审计日志、多租户隔离
 - 🎤 **语音转录** - OpenAI Whisper自动转录面试记录
@@ -43,7 +43,7 @@ TalentFlow是一个现代化的企业级人才管理平台，集成了**AI智能
 - **继任计划**: 识别和培养未来领导者
 
 ### 🤖 AI智能助手
-- **Gemini AI集成**: 智能对话与人才分析
+- **DeepSeek AI集成**: 智能对话与人才分析
 - **自然语言查询**: 用对话方式获取人才洞察
 - **智能建议**: AI驱动的发展建议
 
@@ -105,7 +105,7 @@ pnpm dev
 ### 必需
 - Node.js 18+
 - pnpm (推荐) 或 npm
-- Gemini API密钥
+- DeepSeek API密钥
 
 ### 推荐（完整功能）
 - Supabase账号（数据库）
@@ -120,14 +120,14 @@ pnpm dev
 
 ```bash
 # .env.local
-GEMINI_API_KEY=your_gemini_api_key
+DEEPSEEK_API_KEY=your_gemini_api_key
 ```
 
 ### 完整配置（所有功能）
 
 ```bash
-# Gemini AI
-GEMINI_API_KEY=your_gemini_api_key
+# DeepSeek AI
+DEEPSEEK_API_KEY=your_gemini_api_key
 
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
@@ -161,7 +161,7 @@ STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 - **Serverless Functions** - API端点
 
 ### AI & 集成
-- **Google Gemini AI** - 智能对话与分析
+- **DeepSeek AI** - 智能对话与分析
 - **OpenAI Whisper** - 语音转录
 - **Stripe** - 支付处理
 
@@ -180,7 +180,7 @@ TalentFlow/
 │   ├── supabaseService-enhanced.ts  # 数据库操作
 │   ├── voiceService.ts              # 语音转录
 │   ├── paymentService.ts            # 支付管理
-│   └── geminiService.ts             # AI对话
+│   └── deepseekService.ts             # AI对话
 ├── db/                 # 数据库脚本
 │   ├── schema-enhanced.sql  # 数据库架构
 │   └── seed-data.sql        # 测试数据
@@ -330,7 +330,7 @@ TalentFlow/
 感谢以下开源项目和服务:
 
 - [Supabase](https://supabase.com) - 数据库基础设施
-- [Google Gemini AI](https://ai.google.dev) - AI对话能力
+- [DeepSeek AI](https://www.deepseek.com) - AI对话能力
 - [OpenAI](https://openai.com) - 语音转录
 - [Stripe](https://stripe.com) - 支付处理
 - [Vercel](https://vercel.com) - 托管平台

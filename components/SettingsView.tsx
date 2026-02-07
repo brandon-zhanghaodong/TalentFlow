@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Save, Bell, Lock, Globe, Info, CheckCircle2, Users, KeyRound, Eye, EyeOff, RefreshCw, Trash2, Plus, X, AlertTriangle, Upload, FileUp, Sparkles, Loader2 } from 'lucide-react';
 import { User, TenantAuth } from '../types';
-import { parseOrgStructure } from '../services/geminiService';
+import { parseOrgStructure } from '../services/deepseekService';
 
 interface SettingsViewProps {
   currentUser?: User;

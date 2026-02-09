@@ -271,7 +271,7 @@ function App() {
             />
           )}
           {currentView === 'list' && (
-            <EmployeeList employees={filteredEmployees} />
+            <EmployeeList employees={filteredEmployees} onEmployeesChange={setEmployees} />
           )}
           {currentView === 'analytics' && (
              <AnalyticsView employees={filteredEmployees} />

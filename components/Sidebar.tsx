@@ -35,7 +35,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, onLog
         </div>
         <NavItem 
           icon={<Users size={20} />} 
-          label="员工花名册" 
+          label="基础数据" 
           active={currentView === 'list'}
           onClick={() => onNavigate('list')}
         />
